@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>C++ 원형 큐 시뮬레이터</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--ink:#171a21;--muted:#667085;--line:#d9dee8;--accent:#2563eb;--front:#0f766e;--rear:#b45309;--danger:#b42318;--ok:#067647}
+*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,"Segoe UI","Noto Sans KR",sans-serif;background:var(--bg);color:var(--ink)}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 18px 48px}
+h1{font-size:30px;margin:0 0 8px}.lead{margin:0 0 20px;color:var(--muted);line-height:1.65}
+.grid{display:grid;grid-template-columns:1.25fr .75fr;gap:18px}@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 4px 16px rgba(16,24,40,.05)}
+.topstats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}@media(max-width:650px){.topstats{grid-template-columns:repeat(2,1fr)}}
+.stat{border:1px solid var(--line);border-radius:14px;padding:12px;background:#fafbfc}.stat b{display:block;font-size:22px;margin-top:3px}.stat span{font-size:12px;color:var(--muted)}
+.status{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;font-weight:700;font-size:13px;border:1px solid var(--line)}
+.status.empty{color:#344054;background:#f2f4f7}.status.full{color:var(--danger);background:#fef3f2;border-color:#fecdca}.status.normal{color:var(--ok);background:#ecfdf3;border-color:#abefc6}
+.queue{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin:22px 0 12px}
+.slot{min-height:120px;border:2px solid var(--line);border-radius:16px;padding:10px;position:relative;background:white;transition:.2s}
+.slot .idx{font-size:12px;color:var(--muted);position:absolute;top:8px;right:10px}
+.slot .order{margin-top:30px;font-weight:800;font-size:14px;line-height:1.35}.slot .menu{font-size:12px;color:var(--muted);margin-top:4px}
+.slot.front{border-color:var(--front);box-shadow:0 0 0 3px rgba(15,118,110,.12)}.slot.rear{border-color:var(--rear);box-shadow:0 0 0 3px rgba(180,83,9,.12)}.slot.front.rear{background:#fff7ed}
+.marker{position:absolute;left:8px;bottom:7px;font-size:11px;font-weight:800}.mf{color:var(--front)}.mr{color:var(--rear);left:auto;right:8px}
+.emptyHint{font-size:12px;color:var(--muted);margin-top:32px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.controls button{border:0;border-radius:12px;padding:11px 14px;font-weight:800;cursor:pointer}.primary{background:var(--accent);color:#fff}.secondary{background:#eef2f6;color:#182230}.danger{background:#fee4e2;color:var(--danger)}
+.calc{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#101828;color:#f2f4f7;border-radius:14px;padding:14px;line-height:1.65;margin-top:14px;white-space:pre-wrap}
+.explain{border-left:4px solid var(--accent);padding:10px 12px;background:#eff6ff;border-radius:8px;line-height:1.65;margin-top:14px}
+.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.6;background:#0b1220;color:#dbeafe;border-radius:14px;padding:16px;overflow:auto}
+.code .hl{display:block;background:#1e3a8a;margin:0 -8px;padding:0 8px;border-radius:5px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:10px}.dot{width:11px;height:11px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:-1px}.df{background:var(--front)}.dr{background:var(--rear)}
+.steps{line-height:1.65;color:#344054}.steps b{color:#101828}.note{font-size:13px;color:var(--muted);line-height:1.65;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>C++ 원형 큐 시뮬레이터</h1>
+<p class="lead">지금 과제 코드 방식 그대로: <b>front == rear 이면 EMPTY</b>, <b>nextRear == front 이면 FULL</b>. 실제 주문 최대 5개를 저장하려고 배열은 6칸을 씁니다.</p>
+<div class="grid">
+<section class="card">
+  <div class="topstats">
+    <div class="stat"><span>front</span><b id="frontV">0</b></div>
+    <div class="stat"><span>rear</span><b id="rearV">0</b></div>
+    <div class="stat"><span>nextRear</span><b id="nextV">1</b></div>
+    <div class="stat"><span>상태</span><b style="font-size:14px;margin-top:8px"><span id="status" class="status empty">EMPTY</span></b></div>
+  </div>
+
+  <div id="queue" class="queue"></div>
+  <div class="legend"><span><i class="dot df"></i>front = 다음에 serve할 주문</span><span><i class="dot dr"></i>rear = 다음 주문을 넣을 칸</span></div>
+
+  <div class="calc" id="calc"></div>
+  <div class="explain" id="explain"></div>
+
+  <div class="controls">
+    <button class="primary" onclick="addOrder()">주문 1개 추가</button>
+    <button class="secondary" onclick="serveOrder()">주문 1개 Serve</button>
+    <button class="secondary" onclick="fillToFull()">FULL까지 채우기</button>
+    <button class="danger" onclick="resetQ()">Reset</button>
+  </div>
+</section>
+
+<aside class="card">
+  <h2 style="margin-top:0;font-size:20px">왜 front와 rear가 겹치면 FULL이 아니야?</h2>
+  <div class="steps">
+    <p>이 구현에서는 <b>front == rear</b>를 이미 <b>“아무 주문도 없음”</b>이라는 표시로 예약했어.</p>
+    <p>그래서 FULL도 똑같이 front == rear로 만들면 컴퓨터가 <b>EMPTY인지 FULL인지 구분할 수 없어.</b></p>
+    <p>해결법은 <b>배열을 한 칸 더 만들고 그 한 칸을 항상 비워두는 것</b>이야. 그래서 rear의 <b>다음 칸</b>이 front이면 더 들어갈 수 없다고 판단해.</p>
+  </div>
+
+  <h3 style="margin-bottom:8px">과제 코드</h3>
+  <div class="code" id="code">
+<span id="l1">int nextRear = (rear + 1) % (maxNumOrder + 1);</span>
+<span id="l2">if (nextRear == front) {</span>
+<span id="l3">    return 0; // FULL</span>
+<span id="l4">}</span>
+<span id="l5">orderQueue[rear] = newOrder;</span>
+<span id="l6">rear = nextRear;</span>
+<span id="l7">OrderCnt++;</span>
+  </div>
+  <p class="note"><b>핵심:</b> rear는 “마지막 주문 위치”가 아니라 <b>다음 주문을 넣을 위치</b>로 쓰고 있어.</p>
+</aside>
+</div>
+</div>
+<script>
+const capacity=5, size=capacity+1;
+let q=Array(size).fill(null), front=0, rear=0, seq=1;
+const names=["Alice","Bob","David","Brown","Evans","Wilson","Tom","Jenny"];
+const menus=["Mocha","Espresso","Soy","Latte","Whip","Milk","Americano","Tea"];
+
+function nextRear(){ return (rear+1)%size; }
+function isEmpty(){ return front===rear; }
+function isFull(){ return nextRear()===front; }
+function count(){
+  return (rear-front+size)%size;
+}
+function clearHL(){for(let i=1;i<=7;i++)document.getElementById("l"+i).classList.remove("hl")}
+function hl(...n){clearHL(); n.forEach(i=>document.getElementById("l"+i).classList.add("hl"))}
+
+function render(msg){
+  document.getElementById("frontV").textContent=front;
+  document.getElementById("rearV").textContent=rear;
+  document.getElementById("nextV").textContent=nextRear();
+  const st=document.getElementById("status");
+  if(isEmpty()){st.textContent="EMPTY";st.className="status empty"}
+  else if(isFull()){st.textContent="FULL";st.className="status full"}
+  else{st.textContent="주문 "+count()+"개";st.className="status normal"}
+  const box=document.getElementById("queue"); box.innerHTML="";
+  q.forEach((o,i)=>{
+    const d=document.createElement("div");
+    d.className="slot"+(i===front?" front":"")+(i===rear?" rear":"");
+    d.innerHTML='<span class="idx">index '+i+'</span>'+
+      (o?'<div class="order">'+o.name+'</div><div class="menu">'+o.menu+'</div>':'<div class="emptyHint">비어 있음</div>')+
+      (i===front?'<span class="marker mf">FRONT</span>':'')+
+      (i===rear?'<span class="marker mr">REAR</span>':'');
+    box.appendChild(d);
+  });
+  document.getElementById("calc").textContent=
+    "nextRear = (rear + 1) % 6\n"+
+    "         = ("+rear+" + 1) % 6\n"+
+    "         = "+nextRear()+"\n\n"+
+    "FULL 검사: nextRear("+nextRear()+") == front("+front+") → "+(isFull()?"참 (FULL)":"거짓");
+  document.getElementById("explain").innerHTML=msg || defaultMsg();
+}
+function defaultMsg(){
+  if(isEmpty()) return "<b>지금은 EMPTY.</b> front와 rear가 둘 다 "+front+"이야. 이 방식에서는 둘이 같으면 빈 큐로 약속했어.";
+  if(isFull()) return "<b>지금은 FULL.</b> rear 자체가 front와 같은 게 아니라, <b>rear의 다음 칸(nextRear)이 front와 같아.</b> 그래서 한 칸 더 가면 front를 침범하므로 주문을 더 못 넣어.";
+  return "현재 <b>rear="+rear+"</b> 칸에 다음 주문이 들어가고, 넣은 뒤 rear는 <b>nextRear="+nextRear()+"</b>로 이동해.";
+}
+function addOrder(){
+  hl(1,2);
+  if(isFull()){
+    render("<b>추가 실패.</b> nextRear == front 이므로 FULL이야. rear가 front와 겹친 게 아니라 <b>다음 rear가 front를 만나기 직전</b>이라 멈추는 거야.");
+    return;
+  }
+  const nr=nextRear(), pos=rear;
+  const o={name:names[(seq-1)%names.length],menu:menus[(seq-1)%menus.length]};
+  q[pos]=o; rear=nr; seq++;
+  hl(5,6,7);
+  render("<b>"+pos+"번 칸</b>에 "+o.name+"의 "+o.menu+" 주문을 넣었고, rear를 nextRear였던 <b>"+rear+"</b>로 이동했어.");
+}
+function serveOrder(){
+  clearHL();
+  if(isEmpty()){render("<b>Serve 불가.</b> front == rear라서 큐가 비어 있어.");return}
+  const pos=front, o=q[pos]; q[pos]=null; front=(front+1)%size;
+  render("<b>"+pos+"번 칸</b>의 "+o.name+" 주문을 먼저 Serve했어. 이제 front가 <b>"+front+"</b>로 한 칸 이동했어.");
+}
+function fillToFull(){
+  let guard=0; while(!isFull()&&guard++<20){
+    const nr=nextRear(),pos=rear;
+    q[pos]={name:names[(seq-1)%names.length],menu:menus[(seq-1)%menus.length]};
+    rear=nr;seq++;
+  }
+  hl(1,2);
+  render("<b>FULL 상태를 만들었어.</b> 주문은 5개지만 배열은 6칸이야. 한 칸은 일부러 비워두고, <b>nextRear == front</b>가 되는 순간 FULL이라고 판단해.");
+}
+function resetQ(){q=Array(size).fill(null);front=0;rear=0;seq=1;clearHL();render()}
+render();
+</script>
+</body>
+</html>
